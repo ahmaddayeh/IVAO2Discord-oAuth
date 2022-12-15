@@ -4,7 +4,6 @@ require_once ('../index.php');
 // ini_set('display_errors', 1);
 // ini_set('display_startup_errors', 1);
 // error_reporting(E_ALL);
-
 if (!isset($_GET['code']))
 {
     echo 'no code';
@@ -64,6 +63,8 @@ session_start();
 $_SESSION['logged_in'] = true;
 $_SESSION['userDiscordId'] = $result['id'];
 $_SESSION['access_token'] = $access_token;
+$_SESSION['avatar'] = $result['avatar'];
+$_SESSION['username'] = $result['username'];
 
 header("location: /Process/functions.php");
 

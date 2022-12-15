@@ -1,7 +1,7 @@
 <?php
+// Set cookie name
+define('cookie_name', 'ivao_tokens');
 
-require_once ('index.php');
-session_start();
 // Get all URLs we need from the server
 $openid_url = 'https://api.ivao.aero/.well-known/openid-configuration';
 $openid_result = file_get_contents($openid_url, false);
@@ -13,9 +13,10 @@ if ($openid_result === false)
 $openid_data = json_decode($openid_result, true);
 
 // Now we can take care of the actual authentication
-$client_id = $_ENV['ivao_client_id'];;
-$client_secret = $_ENV['ivao_client_secret'];
-$redirect_uri = $_ENV['redirect_uri'];
+$client_id = '57b2d957-38ff-4d1e-8d8f-7e5aa8d0d5fe';
+$client_secret = 'VUFqej5bLDOBngOtUcQCF97U1o7MQDbu';
+$redirect_uri = 'http://localhost:8000/user.php';
+
 if (isset($_GET['code']) && isset($_GET['state']))
 {
     // User has been redirected back from the login page
@@ -25,7 +26,7 @@ if (isset($_GET['code']) && isset($_GET['state']))
         'code' => $code,
         'client_id' => $client_id,
         'client_secret' => $client_secret,
-        'redirect_uri' => $_ENV['ivao_redirect_uri'],
+        'redirect_uri' => $redirect_uri,
     );
 
     // use key 'http' even if you send the request to https://...
@@ -48,17 +49,17 @@ if (isset($_GET['code']) && isset($_GET['state']))
 
     $access_token = $token_res_data['access_token']; // Here is the access token
     $refresh_token = $token_res_data['refresh_token']; // Here is the refresh token
-    setcookie('ivao_tokens', json_encode(array(
+    setcookie(cookie_name, json_encode(array(
         'access_token' => $access_token,
         'refresh_token' => $refresh_token,
     )) , time() + 60 * 60 * 24 * 30); // 30 days
-    header('Location: user.php'); // Remove the code and state from URL since they aren't valid anymore
+    header('Location: ' . $redirect_uri); // Remove the code and state from URL since they aren't valid anymore
     
 }
-elseif (isset($_COOKIE['ivao_tokens']))
+elseif (isset($_COOKIE[cookie_name]))
 {
     // User has already logged in
-    $tokens = json_decode($_COOKIE['ivao_tokens'], true);
+    $tokens = json_decode($_COOKIE[cookie_name], true);
     $access_token = $tokens['access_token'];
     $refresh_token = $tokens['refresh_token'];
 
@@ -74,7 +75,7 @@ elseif (isset($_COOKIE['ivao_tokens']))
     $user_result = file_get_contents($openid_data['userinfo_endpoint'], false, $user_context);
     $user_res_data = json_decode($user_result, true);
 
-    if (isset($user_res_data['description']) && $user_res_data['description'] === 'This auth token has been revoked or expired')
+    if (isset($user_res_data['description']) && ($user_res_data['description'] === 'This auth token has been revoked or expired' || $user_res_data['description'] === 'Couldn\'t decode auth token'))
     {
         // Access token expired, using refresh token to get a new one
         $token_req_data = array(
@@ -104,11 +105,18 @@ elseif (isset($_COOKIE['ivao_tokens']))
 
         $access_token = $token_res_data['access_token']; // Here is the new access token
         $refresh_token = $token_res_data['refresh_token']; // Here is the new refresh token
-        setcookie('ivao_tokens', json_encode(array(
+        setcookie(cookie_name, json_encode(array(
             'access_token' => $access_token,
             'refresh_token' => $refresh_token,
         )) , time() + 60 * 60 * 24 * 30); // 30 days
-        header('Location: user.php'); // Try to use the access token again
+        header('Location: ' . $redirect_uri); // Try to use the access token again
+        
+    }
+    elseif (isset($user_res_data['description']) && ($user_res_data['description'] === 'No auth token found in request'))
+    {
+        // Access token missing from the cookie, delete cookie and authenticate user again
+        setcookie(cookie_name, "", time() - 3600); // reset cookie value to null and expire time to last hour
+        header('Location: ' . $redirect_uri); // Try to login again
         
     }
     $fullUserData = json_encode($user_res_data); //encode the user data
@@ -128,7 +136,7 @@ else
     $reponse_type = 'code';
     $scopes = 'profile configuration email';
     $state = '1234567890'; // Random string to prevent CSRF attacks
-    $full_url = "$base_url?response_type=$reponse_type&client_id=$client_id&scope=$scopes&redirect_uri={$_ENV['ivao_redirect_uri']}&state=$state";
+    $full_url = "$base_url?response_type=$reponse_type&client_id=$client_id&scope=$scopes&redirect_uri=$redirect_uri&state=$state";
 
     echo "<a href=\"$full_url\">Login</a>";
 }

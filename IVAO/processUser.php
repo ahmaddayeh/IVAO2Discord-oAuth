@@ -1,5 +1,5 @@
 <?php
-require_once ('../index.php');//to use Dotnev
+require_once ('../index.php'); //to use Dotnev
 session_start(); //start the session
 $user = $_SESSION["userData"]; //get user data from session
 $UserData = json_decode($user); //encode user data
@@ -39,6 +39,17 @@ else
 $_SESSION["nickName"] = $nickName;
 $_SESSION["divisionMember"] = $isDivisionMember;
 $_SESSION["email"] = $UserData->email;
+$_SESSION["VID"] = $UserData->id;
+$_SESSION["firstName"] = $UserData->firstName;
+$_SESSION["lastName"] = $UserData->lastName;
+$_SESSION["pilotRating"] = $UserData
+    ->rating
+    ->pilotRating->id;
+$_SESSION["atcRating"] = $UserData
+    ->rating
+    ->atcRating->id;
+$_SESSION["staffPosition"] = $staffTrimmed;
+$_SESSION["divisionId"] = $UserData->divisionId;
 
 header("location: /Discord/init-oauth.php");
 
